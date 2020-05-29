@@ -58,7 +58,7 @@ from seaborn import catplot
 from pandas import DataFrame
 
 
-# In[2]:
+# In[ ]:
 
 
 # # # Streamlined NTRU Prime: sntrup4591761
@@ -89,7 +89,7 @@ from pandas import DataFrame
 # 	return (r.randint(0, Q, size=P) * 3 // 3) % Q
 
 
-# In[3]:
+# In[ ]:
 
 
 # ASCAD: Adapted by Mahmoud Gharra to fit the NTRU Prime input
@@ -198,7 +198,7 @@ def four_tr(traces, tmp_i, f_s):
     return _Four, _freqs
 
 
-# In[4]:
+# In[ ]:
 
 
 # unaltered code snippet taken from ASCAD_train_model
@@ -228,7 +228,7 @@ def load_ascad(ascad_database_file, load_metadata=False):
 		return (X_profiling, Y_profiling), (X_attack, Y_attack), (in_file['Profiling_traces/metadata'], in_file['Attack_traces/metadata'])
 
 
-# In[5]:
+# In[ ]:
 
 
 def sample_traces(unlab_traces):
@@ -287,7 +287,7 @@ def sample_traces(unlab_traces):
 
 
 
-# In[6]:
+# In[ ]:
 
 
 # ASCAD: architecture code, adapted by Mahmoud Gharra and fitted with new hyper parameters and optimizer.
@@ -423,7 +423,7 @@ def cnn3(classes=3):
     return model
 
 
-# In[7]:
+# In[ ]:
 
 
 MODEL_CONST = 0
@@ -489,9 +489,10 @@ def save_file(save_loc, file, case=-1, seed=None, key=None, att=None):
         # The graph needs the accuracy,  arrays
         # File is history
         plt.plot(file.history['accuracy'])
-        plt.plot(file.history['val_accuracy'])
         plt.plot(file.history['loss'])
-        plt.plot(file.history['val_loss'])
+        if validation_split_const is not None:
+            plt.plot(file.history['val_accuracy'])
+            plt.plot(file.history['val_loss'])
         tmp_title = 'Training Graph: ' + 'seed' +'{:02d}'.format(seed)
         if key is not None:
             tmp_title = tmp_title +", key: "+'{:02d}'.format(key)
@@ -500,7 +501,10 @@ def save_file(save_loc, file, case=-1, seed=None, key=None, att=None):
         plt.title(tmp_title)
         plt.ylabel('%')
         plt.xlabel('Epoch')
-        plt.legend(['Acc', 'Valid. Acc', 'Loss', 'Valid. Loss'], loc='upper left')
+        if validation_split_const is not None:
+            plt.legend(['Acc', 'Valid. Acc', 'Loss', 'Valid. Loss'], loc='upper left')
+        else:
+            plt.legend(['Acc', 'Loss'], loc='upper left')
         plt.savefig(file_path)
         plt.clf()
         
@@ -509,7 +513,8 @@ def save_file(save_loc, file, case=-1, seed=None, key=None, att=None):
         # The graph needs the accuracy,  arrays
         # File is history
         plt.plot(file.history['trn_advantage'])
-        plt.plot(file.history['val_advantage'])
+        if validation_split_const is not None:
+            plt.plot(file.history['val_advantage'])
         
         tmp_title = 'Advantage Graph: '
         if seed is not None:
@@ -522,17 +527,16 @@ def save_file(save_loc, file, case=-1, seed=None, key=None, att=None):
         plt.title(tmp_title)
         plt.ylabel('%')
         plt.xlabel('Epoch')
-        plt.legend(['trn. Adv', 'val. Adv'], loc='upper left')
+        if validation_split_const is not None:
+            plt.legend(['trn. Adv', 'val. Adv'], loc='upper left')
+        else:
+            plt.legend(['trn. Adv'], loc='upper left')
         plt.savefig(file_path)
         plt.clf()
     else:
         raise ValueError("save_file was called with a wrong case")
         exit(-1)
     
-
-
-# In[8]:
-
 
 
 # ASCAD code adapted by Mahmoud Gharra to fit our purposes.
@@ -584,23 +588,21 @@ def training_model_intern(model, x, y, callbacks, batch_size=100, verbose=1, epo
     return _history
 
 ## Saves pre-defined history parameters that keras training returns. It assumes existence of validation data.
-def save_history(training_model, history, seed=None, key_idx=None, att=None):
+def save_history(training_model, history, seed=None, key_idx=None, att=None, valid_val=None):
     # SAVE HISTORY
     ## SAVE HISTORY: LOSS per epoch
     save_file(training_model, history.history['loss'], case=LOSS_CONST, seed=seed, key=key_idx)
     ## SAVE HISTORY: ACCURACY per epoch
     save_file(training_model, history.history['accuracy'], case=ACC_CONST, seed=seed, key=key_idx)
-    ## SAVE HISTORY: VAL_LOSS per epoch
-    save_file(training_model, history.history['val_loss'], case=VAL_LOSS_CONST, seed=seed, key=key_idx)
-    ## SAVE HISTORY: VAL_ACCURACY per epoch
-    save_file(training_model, history.history['val_accuracy'], case=VAL_ACC_CONST, seed=seed, key=key_idx)
+    if valid_val is not None:
+        ## SAVE HISTORY: VAL_LOSS per epoch
+        save_file(training_model, history.history['val_loss'], case=VAL_LOSS_CONST, seed=seed, key=key_idx)
+        ## SAVE HISTORY: VAL_ACCURACY per epoch
+        save_file(training_model, history.history['val_accuracy'], case=VAL_ACC_CONST, seed=seed, key=key_idx)
 
     ## SAVE HISTORY: GRAPH
     save_file(training_model, history, case=TRN_GRPH_CONST, seed=seed, key=key_idx, att=att)
     
-
-
-# In[9]:
 
 
 # This method was taken from the ASCAD code and adapted very heavily
@@ -643,8 +645,6 @@ def calc_advantage(tst_acc):
     
 
 
-# In[10]:
-
 
 
 # Load attacking traces
@@ -681,7 +681,7 @@ def display_results(models, accuracies, advantage, isASCAD=False):
         plt.savefig(get_file_path(training_model, ADV_GRPH_CONST))
 
 
-# In[11]:
+# In[ ]:
 
 
 # prepare
@@ -695,7 +695,7 @@ history = dict()
 # CHIP_WHISP_DB = 1
 
 
-# In[12]:
+# In[ ]:
 
 
 #ASCAD: Adapted heavily by Mahmoud Gharra
@@ -732,14 +732,15 @@ if len(sys.argv)!=2:
 #     isASCAD = False
 
 
-#     DB_title = my_database = "schoolbook32/schoolbook32"        
-#     DB_title = "schoolbook32" ## Optional... It's for the graph
+    DB_title = my_database = "schoolbook32/schoolbook32" # loc on HPC      
+    DB_title = "schoolbook32" ## Optional... It's for the graph
+    isASCAD = False
 
 
 #     my_database = "../2020_MAR_31/ASCAD_data/ASCAD_databases/ASCAD.h5" # Loc on my personal pc
-    my_database = "../PRE_MAY_06/ASCAD/ATMEGA_AES_v1/ATM_AES_v1_fixed_key/ASCAD_data/ASCAD_databases/ASCAD.h5" # Loc on Einstein
-    DB_title = "ASCAD"
-    isASCAD = True
+#     my_database = "../PRE_MAY_06/ASCAD/ATMEGA_AES_v1/ATM_AES_v1_fixed_key/ASCAD_data/ASCAD_databases/ASCAD.h5" # Loc on Einstein
+#     DB_title = "ASCAD"
+#     isASCAD = True
 
     # TRAINING MODEL IS THE FILE, IN WHICH THE DATA SHOULD BE SAVED
     # Network type simply chooses the architecture according to which the data is trained
@@ -747,18 +748,19 @@ if len(sys.argv)!=2:
     # 'cnn' works well for operand_scanning_32 with 20 epochs batch 100 and 2 attempts
         
     # CNN training
-    network_type = "cnn" ## ATM: you can choose between 'mlp', 'cnn', 'cnn2', and 'cnn3'
+    network_type = "cnn3" ## ATM: you can choose between 'mlp', 'cnn', 'cnn2', and 'cnn3'
     # save folder
-    training_model = "training_ASCAD_cnn_batch100_epochs2_MAXATT1_lr1e-3"
+    training_model = "training_schoolbook32_cnn3_batch100_epochs200_MAXATT3_lr1e-5_valid5e-2"
     
-    epochs = 2
+    epochs = 200
     batch_size = 100
     global MAX_ATTEMPTS_PER_KEY, drop_out, MIN_ACC
     MIN_ACC = 0.95
 #     EARLY_STOP_PATIENCE = 50
     drop_out = 0.2
     MAX_ATTEMPTS_PER_KEY = 1
-    LEARNING_RATE = 0.001
+    LEARNING_RATE = 0.00001
+    validation_split_const = 0.05 # (None or a float in }0,1{)
     ############################################################
     # Don't change anything from this point on,
     # unless you have an intuition for how the code works
@@ -815,7 +817,7 @@ for seed in my_seeds:
             sys.exit(-1);
 
         ### training
-        history, att = train_model(X_profiling, to_categorical(Y_profiling, num_classes=256), best_model, training_model, epochs = epochs, batch_size=batch_size, seed=seed)
+        history, att = train_model(X_profiling, to_categorical(Y_profiling, num_classes=256), best_model, training_model, epochs = epochs, batch_size=batch_size, seed=seed, validation_split=validation_split_const)
 
         # SAVE HISTORY
         save_history(training_model, history, seed=seed, att=att)
