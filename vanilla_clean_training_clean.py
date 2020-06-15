@@ -58,7 +58,7 @@ from seaborn import catplot
 from pandas import DataFrame
 
 
-# In[ ]:
+# In[2]:
 
 
 # # # Streamlined NTRU Prime: sntrup4591761
@@ -89,7 +89,7 @@ from pandas import DataFrame
 # 	return (r.randint(0, Q, size=P) * 3 // 3) % Q
 
 
-# In[ ]:
+# In[3]:
 
 
 # ASCAD: Adapted by Mahmoud Gharra to fit the NTRU Prime input
@@ -198,7 +198,86 @@ def four_tr(traces, tmp_i, f_s):
     return _Four, _freqs
 
 
-# In[ ]:
+# In[4]:
+
+
+# ASCAD: Adapted by Mahmoud Gharra to fit the Gaussian Sampler input
+
+
+# returns traces and labels, as well as some important global meta_data
+
+def load_database_gauss(my_database):
+    # load traces
+    print("++ Loading projects")
+    project = cw.open_project(my_database)
+    global KEY_LENGTH, TEXT_LENGTH, SAMPLE_HIGH, TRAINING_SLICE, TEST_NUM, TEST_SLICE
+
+    # Organize trace data for MLP
+    print("++ Organizing traces")
+    KEY_LENGTH = TEXT_LENGTH = len(project.keys[0]) * 8
+    print("KEY_LENGTH: {}".format(KEY_LENGTH))
+    print("project.keys[0][0]: {}".format(project.keys[0][0]))
+    print("np.asarray(bytearray(project.keys[0]))", np.asarray(bytearray(project.keys[0])))
+
+    # SET DATA RELATED GLOBALS REQUIRED FOR EXTRACTION
+    sample_low = 0
+    SAMPLE_HIGH = project.trace_manager().num_points() # length of singular trace
+    sample_slice = slice(sample_low, SAMPLE_HIGH)
+    sample_num = len(project.traces) # number of traces
+#     print("sample num: ", sample_num)
+    
+    # organize traces in X and Y matrices
+    # count is used to count traces with wrong label length (some labels displayed a length of 31, it is as of the formulation of this comment unclear, why that happens)
+    count = 0
+
+    X = empty(shape=(sample_num, SAMPLE_HIGH - sample_low))
+    y = empty(shape=(sample_num, KEY_LENGTH))
+
+    for i in range(sample_num):
+        # reproduce values
+        
+        # The next three lines were for debugging purposes. I'm sorry for doing printf debugging :p
+#         print("key of sample {}: {}".format(i, project.keys[i]))
+#         print("data type of key of sample {}: {}".format(i, type(project.keys[i])))
+#         print("ISO-8859-1 encoding: {}".format(project.keys[i].decode("ISO-8859-1")))
+    
+        # seeing as some of the traces appear to to have labels of the wrong length, I've elected to remove them
+        if (len(np.asarray(bytearray(project.keys[i])))) is not int(KEY_LENGTH/8):
+            count += 1
+            print("Number of problematic traces raised to: {}".format(count))
+            continue
+            
+        # we subtract count because we're trying to fill in for the wrong traces
+#         y[i-count] = np.asarray(bytearray(project.keys[i]))
+        y[i-count] = np.asarray([int(char) for char in ''.join(['{0:08b}'.format(ff) for ff in np.asarray(bytearray(project.keys[0]))])])
+
+        X[i-count] = project.waves[i][sample_slice]
+
+#     remove last {count} rows for having wrong KEY-Dimesions
+    if i is not 0:
+        y = y[0:-count]
+        X = X[0:-count]
+
+        
+    # SET DATA RELATED GLOBALS before returning (POST EXTRACTION)
+    sample_low = 0
+    SAMPLE_HIGH = project.trace_manager().num_points() # length of singular trace
+    sample_slice = slice(sample_low, SAMPLE_HIGH)
+    sample_num = len(project.traces) - count # number of traces
+    
+    training_num = sample_num - tst_len
+    TRAINING_SLICE = slice(0, training_num)
+
+    TEST_NUM = sample_num - training_num
+    TEST_SLICE = slice(training_num, TEST_NUM + training_num)
+    assert TEST_NUM + training_num <= sample_num
+    assert training_num > 3*TEST_NUM
+
+
+    return X, y
+
+
+# In[5]:
 
 
 # unaltered code snippet taken from ASCAD_train_model
@@ -228,7 +307,7 @@ def load_ascad(ascad_database_file, load_metadata=False):
 		return (X_profiling, Y_profiling), (X_attack, Y_attack), (in_file['Profiling_traces/metadata'], in_file['Attack_traces/metadata'])
 
 
-# In[ ]:
+# In[6]:
 
 
 def sample_traces(unlab_traces):
@@ -287,7 +366,7 @@ def sample_traces(unlab_traces):
 
 
 
-# In[ ]:
+# In[7]:
 
 
 # ASCAD: architecture code, adapted by Mahmoud Gharra and fitted with new hyper parameters and optimizer.
@@ -423,7 +502,44 @@ def cnn3(classes=3):
     return model
 
 
-# In[ ]:
+### CNN model 4 - VGG16 based from: https://towardsdatascience.com/the-4-convolutional-neural-network-models-that-can-classify-your-fashion-images-9fe7f3e5399d
+def cnn4(classes=3):
+    # From VGG16 design
+    input_shape = (SAMPLE_HIGH,1)
+    img_input = Input(shape=input_shape)
+    # Block 0
+    x = BatchNormalization()(img_input)
+    
+    # Block 1
+    x = Conv1D(32, 3, activation='relu', padding='valid', name='block1_conv1')(x)
+    x = MaxPooling1D(2, name='block1_pool')(x)
+    x = Dropout(0.25)(x)
+    
+    # Block 2
+    x = Conv1D(64, 3, activation='relu', padding='valid', name='block2_conv1')(x)
+    x = MaxPooling1D(2, name='block2_pool')(x)
+    x = Dropout(0.25)(x)
+
+    # Block 3
+    x = Conv1D(128, 3, activation='relu', padding='valid', name='block3_conv1')(x)
+    x = Dropout(0.4)(x)
+    
+    # Classification block
+    x = Flatten(name='flatten')(x)
+    x = Dense(128, activation='relu', name='fc1')(x)
+
+    x = Dropout(0.3)(x)
+    x = Dense(classes, activation='softmax', name='predictions')(x)
+
+    inputs = img_input
+    # Create model.
+    model = Model(inputs, x, name='cnn')
+    optimizer = Adam(lr=LEARNING_RATE) # this one had 0.001
+    model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+    return model
+
+
+# In[8]:
 
 
 MODEL_CONST = 0
@@ -539,6 +655,10 @@ def save_file(save_loc, file, case=-1, seed=None, key=None, att=None):
     
 
 
+# In[9]:
+
+
+
 # ASCAD code adapted by Mahmoud Gharra to fit our purposes.
 
 
@@ -605,6 +725,9 @@ def save_history(training_model, history, seed=None, key_idx=None, att=None, val
     
 
 
+# In[10]:
+
+
 # This method was taken from the ASCAD code and adapted very heavily
 
 def calc_tst_acc(best_model, X_attack, Y_attack, num_classes=3, seed=None, key_idx=None):
@@ -645,13 +768,24 @@ def calc_advantage(tst_acc):
     
 
 
+# In[11]:
+
+
+# Type constants defined as follows:
+TYPE_ASCAD = 0
+TYPE_NTRU = 1
+TYPE_GAUSS = 2
+
+
+# In[12]:
+
 
 
 # Load attacking traces
 # TODO: fix this method up and make it work for ASCAD too.
-def display_results(models, accuracies, advantage, isASCAD=False):
+def display_results(models, accuracies, advantage, DB_TYPE = TYPE_NTRU):
     
-    if not isASCAD:
+    if DB_TYPE not in [TYPE_ASCAD]:
     #     # we get 61% accuracy by just guessing, so let's compute the advantage over pure guesses:
     #     print("+ recording calculating advantage")
     #     advantage = { i: (seed, key_idx, (accuracies[(seed, key_idx)] - .62) / (1-.62)) for i, (seed, key_idx) in enumerate(models.keys())}
@@ -681,7 +815,7 @@ def display_results(models, accuracies, advantage, isASCAD=False):
         plt.savefig(get_file_path(training_model, ADV_GRPH_CONST))
 
 
-# In[ ]:
+# In[13]:
 
 
 # prepare
@@ -713,10 +847,22 @@ f_s = 100 # frequency of data in Hz --- I can't seem to find this value in proj
 
 # Training
 tst_len = 500 # length of testing set - How many traces would you like to allocate to training?
-my_seeds = [634253, 9134, 57935] # training seeds - list of seed for network to be trained on. Useful for replicating similar results.
+# my_seeds = [634253, 9134, 57935] # training seeds - list of seed for network to be trained on. Useful for replicating similar results.
+my_seeds = [634253]
+#################################################
+#################################################
+
+
+# Type constants defined at top of code as:
+# TYPE_ASCAD = 0
+# TYPE_NTRU = 1
+# TYPE_GAUSS = 2
 
 #################################################
 #################################################
+
+
+
 
 # if __name__ == "__main__":
 
@@ -729,38 +875,45 @@ if len(sys.argv)!=2:
 #     my_database = "../2020_APR_23/polymul32/projects/operand_scanning_32" # Loc on my personal pc
 #     my_database = "../chipWhisp01/projects/operand_scanning_32" # Loc on Einstein
 #     DB_title = "operand_scanning_32" # arbitrary name
-#     isASCAD = False
+#     DB_TYPE = TYPE_NTRU
 
 
-    DB_title = my_database = "schoolbook32/schoolbook32" # loc on HPC      
-    DB_title = "schoolbook32" ## Optional... It's for the graph
-    isASCAD = False
+#     DB_title = my_database = "schoolbook32/schoolbook32" # loc on HPC      
+#     DB_title = "schoolbook32" ## Optional... It's for the graph
+#     DB_TYPE = TYPE_NTRU
 
 
 #     my_database = "../2020_MAR_31/ASCAD_data/ASCAD_databases/ASCAD.h5" # Loc on my personal pc
 #     my_database = "../PRE_MAY_06/ASCAD/ATMEGA_AES_v1/ATM_AES_v1_fixed_key/ASCAD_data/ASCAD_databases/ASCAD.h5" # Loc on Einstein
 #     DB_title = "ASCAD"
-#     isASCAD = True
+#     DB_TYPE = TYPE_ASCAD
 
+
+
+    my_database = "../GSprojectNils/projects/GStraces"
+#     my_database = "../2020_APR_23/polymul32/projects/operand_scanning_32"
+    DB_title = "Gaussian Sampler"
+    DB_TYPE = TYPE_GAUSS
+    
     # TRAINING MODEL IS THE FILE, IN WHICH THE DATA SHOULD BE SAVED
     # Network type simply chooses the architecture according to which the data is trained
     
     # 'cnn' works well for operand_scanning_32 with 20 epochs batch 100 and 2 attempts
         
     # CNN training
-    network_type = "cnn3" ## ATM: you can choose between 'mlp', 'cnn', 'cnn2', and 'cnn3'
+    network_type = "mlp" ## ATM: you can choose between 'mlp', 'cnn', 'cnn2', and 'cnn3'
     # save folder
-    training_model = "training_schoolbook32_cnn3_batch100_epochs200_MAXATT3_lr1e-5_valid5e-2"
+    training_model = "training_GAUSS_bitwise_mlp_batch100_epochs2_MAXATT1_lr1e-4_valid1e-1"
     
-    epochs = 200
+    epochs = 2
     batch_size = 100
     global MAX_ATTEMPTS_PER_KEY, drop_out, MIN_ACC
     MIN_ACC = 0.95
 #     EARLY_STOP_PATIENCE = 50
     drop_out = 0.2
     MAX_ATTEMPTS_PER_KEY = 1
-    LEARNING_RATE = 0.00001
-    validation_split_const = 0.05 # (None or a float in }0,1{)
+    LEARNING_RATE = 0.0001
+    validation_split_const = 0.1 # (None or a float in }0,1{)
     ############################################################
     # Don't change anything from this point on,
     # unless you have an intuition for how the code works
@@ -787,7 +940,7 @@ for seed in my_seeds:
 #     tf.random.set_seed(seed)
 
     # Train if the data_base is of type .h5 and has the structure used in ASCAD
-    if isASCAD: # Change for DB_Type at some point
+    if DB_TYPE in [TYPE_ASCAD]: # Change for DB_Type at some point
         # loads ASCAD traces
         print("+ Commense loading data")
         (X_profiling, Y_profiling), (X_attack, Y_attack) = load_ascad(my_database)
@@ -812,6 +965,8 @@ for seed in my_seeds:
             best_model = cnn2(256)
         elif(network_type=="cnn3"):
             best_model = cnn3(256)
+        elif(network_type=="cnn4"):
+            best_model = cnn4(256)
         else: #display an error and abort
             print("Error: no topology found for network '%s' ..." % network_type)
             sys.exit(-1);
@@ -831,10 +986,17 @@ for seed in my_seeds:
         advantages[seed] = calc_advantage(accuracies.get(seed))
 
     # Train if we're dealing with chip whisperer readings
-    else:
+    elif DB_TYPE in [TYPE_NTRU, TYPE_GAUSS]:
         # loads cw traces
         print("+ Commense loading data")
-        X, y = load_database_cw(my_database)
+        if DB_TYPE in [TYPE_NTRU]:
+            X, y = load_database_cw(my_database)
+            num_classes = 3
+        elif DB_TYPE in [TYPE_GAUSS]:
+            num_classes = 2
+            X, y = load_database_gauss(my_database)
+        else:
+            print("This shouldn't happen. DB_TYPE entered not ASCAD part but doesn't support specified DB_type")
         print("++ Data dimestions are: ", np.array(X).shape)
 
         # sample some traces
@@ -851,13 +1013,15 @@ for seed in my_seeds:
 
             #get network type
             if(network_type=="cnn"):
-                best_model = cnn()
+                best_model = cnn(num_classes)
             elif(network_type=="cnn2"):
-                best_model = cnn2()
+                best_model = cnn2(num_classes)
             elif(network_type=="cnn3"):
-                best_model = cnn3()
+                best_model = cnn3(num_classes)
+            elif(network_type=="cnn4"):
+                best_model = cnn4(num_classes)
             elif(network_type=="mlp"):
-                best_model = mlp()
+                best_model = mlp(num_classes)
             else: #display an error and abort
                 print("Error: no topology found for network '%s' ..." % network_type)
                 sys.exit(-1);
@@ -883,7 +1047,7 @@ for seed in my_seeds:
                 advantages[(seed, key_idx)] = calc_advantage(accuracies.get((seed, key_idx)))
                 continue                
 
-            history, att = train_model(X_profiling, to_categorical(Y_profiling, num_classes=3), best_model, training_model, seed=seed, key_idx=key_idx, epochs=epochs, batch_size=batch_size)
+            history, att = train_model(X_profiling, to_categorical(Y_profiling, num_classes=num_classes), best_model, training_model, seed=seed, key_idx=key_idx, epochs=epochs, batch_size=batch_size)
             
             ## TODO: save hist
             print("+ save history")
@@ -899,6 +1063,10 @@ for seed in my_seeds:
             ## calculate ADVANTAGE
             advantages[(seed, key_idx)] = calc_advantage(accuracies.get((seed, key_idx)))
 
+    else:
+        print("Wrong DB_TYPE specified.")
+        exit(-1)
+        
 print()
 print("+ Training complete")
 
@@ -910,13 +1078,14 @@ save_file(training_model, advantages, case=TST_ADV_CONST)
 
 
 # TODO: replace calculation of advantage with loading of it
-display_results(models, accuracies, advantages, isASCAD=isASCAD)
+display_results(models, accuracies, advantages, DB_TYPE = TYPE_ASCAD)
 
 
 
 
 
 # In[ ]:
+
 
 
 
