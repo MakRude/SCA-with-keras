@@ -52,22 +52,28 @@ def train_model(data_loader, save_loc, seed=0, key_idx=None):
 
         # Get the input layer shape
         input_layer_shape = data_loader.model.get_layer(index=0).input_shape
-        # Sanity check
-        if input_layer_shape[1] != len(data_loader.X_profiling[0]):
-            print("Error: model input shape %d instead of %d is not expected ..." % (input_layer_shape[1], len(X_profiling[0])))
-            sys.exit(-1)
-        # Adapt the data shape according our model input
-        if len(input_layer_shape) == 2:
-            # This is a MLP
-            Reshaped_X_profiling = data_loader.X_profiling
-        elif len(input_layer_shape) == 3:
-            # This is a CNN: expand the dimensions
-            Reshaped_X_profiling = data_loader.X_profiling.reshape((data_loader.X_profiling.shape[0], data_loader.X_profiling.shape[1], 1))
-        else:
-            print("Error: model input shape length %d is not expected ..." % len(input_layer_shape))
-            sys.exit(-1)
+#         # Sanity check
+#         if input_layer_shape[1] != len(data_loader.X_profiling[0]):
+#             print("Error: model input shape %d instead of %d is not expected ..." % (input_layer_shape[1], len(X_profiling[0])))
+#             sys.exit(-1)
             
-        _history = training_model_intern(model=data_loader.model, x=Reshaped_X_profiling, y=to_categorical(data_loader.Y_profiling, num_classes=data_loader.num_classes), callbacks=callbacks, batch_size=batch_size, verbose=1, epochs=epochs, validation_split=validation_split_const)
+            
+#         # Adapt the data shape according our model input
+#         if len(input_layer_shape) == 2:
+#             # This is a MLP
+#             Reshaped_X_profiling = data_loader.X_profiling
+#         elif len(input_layer_shape) == 3:
+#             # This is a CNN: expand the dimensions
+#             Reshaped_X_profiling = data_loader.X_profiling.reshape((data_loader.X_profiling.shape[0], data_loader.X_profiling.shape[1], 1))
+#         else:
+#             print("Error: model input shape length %d is not expected ..." % len(input_layer_shape))
+#             sys.exit(-1)
+
+        Reshaped_X_profiling = data_loader.X_profiling
+        if not data_loader.TO_CAT:
+            _history = training_model_intern(model=data_loader.model, x=Reshaped_X_profiling, y=data_loader.Y_profiling, callbacks=callbacks, batch_size=batch_size, verbose=1, epochs=epochs, validation_split=validation_split_const)
+        else:
+            _history = training_model_intern(model=data_loader.model, x=Reshaped_X_profiling, y=to_categorical(data_loader.Y_profiling, num_classes=data_loader.num_classes), callbacks=callbacks, batch_size=batch_size, verbose=1, epochs=epochs, validation_split=validation_split_const)
         
         if _history.history['accuracy'][-1] > MIN_ACC:
             break

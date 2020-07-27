@@ -31,16 +31,18 @@ def calc_tst_acc(data_loader, seed=None, key_idx=None):
     # Get the input layer shape
     input_layer_shape = best_model.get_layer(index=0).input_shape
     
-    # Adapt the data shape according our model input
-    if len(input_layer_shape) == 2:
-        # This is a MLP
-        Reshaped_X_attack = X_attack
-    elif len(input_layer_shape) == 3:
-        # This is a CNN: expand the dimensions
-        Reshaped_X_attack = X_attack.reshape((X_attack.shape[0], X_attack.shape[1], 1))
-    else:
-        print("Error: model input shape length %d is not expected ..." % len(input_layer_shape))
-        sys.exit(-1)
+#     # Adapt the data shape according our model input
+#     if len(input_layer_shape) == 2:
+#         # This is a MLP
+#         Reshaped_X_attack = X_attack
+#     elif len(input_layer_shape) == 3:
+#         # This is a CNN: expand the dimensions
+#         Reshaped_X_attack = X_attack.reshape((X_attack.shape[0], X_attack.shape[1], 1))
+#     else:
+#         print("Error: model input shape length %d is not expected ..." % len(input_layer_shape))
+#         sys.exit(-1)
+    
+    Reshaped_X_attack = X_attack
     
     predictions = np.argmax(best_model.predict(Reshaped_X_attack), 1)
 #     print("predictions: ", predictions)

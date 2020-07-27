@@ -15,7 +15,7 @@ from hyper_parameters import TST_LEN
 from training_modules.misc import TYPE_ASCAD, TYPE_NTRU, TYPE_GAUSS, TYPE_DPA, TYPE_M4SC
 from training_modules.misc import check_file_exists
 # training models
-from training_modules.training_models import mlp, cnn, cnn2, cnn3, cnn4
+from training_modules.training_models import mlp, mlp2, mlp3, cnn, cnn2, cnn3, cnn4, cnn5
 
 
 class DATA_LOADER:     
@@ -32,7 +32,7 @@ class DATA_LOADER:
         training_num = self.SAMPLE_NUM - TST_LEN
         
         self.TRAINING_SLICE = slice(0, training_num)
-
+        
         self.TEST_NUM = self.SAMPLE_NUM - training_num
         self.TEST_SLICE = slice(training_num, self.TEST_NUM + training_num)
         
@@ -61,24 +61,23 @@ class DATA_LOADER:
         X_attack = np.array(in_file['Attack_traces/traces'], dtype=np.int8)
         # Load attacking labels
         Y_attack = np.array(in_file['Attack_traces/labels'])
-
+        
         # we don't care about the validation so we're using all the data
         X = np.concatenate((X_profiling, X_attack), axis=0)
         Y = np.concatenate((Y_profiling, Y_attack), axis=0)
-
-
+        
         # SET DATA RELATED GLOBALS REQUIRED FOR EXTRACTION
         sample_len = X.shape[1] # length of singular trace
         trace_num = X.shape[0] # number of traces
-
+        
         self.KEY_LENGTH = 1
         self.__set_dims(sample_len, trace_num)
         
         return X, Y
-
-
+    
+    
     # ASCAD: Adapted by Mahmoud Gharra to fit the NTRU Prime input
-
+    
     # returns traces and labels
     def __load_database_cw(self, my_database):
         # load traces
@@ -227,10 +226,10 @@ class DATA_LOADER:
     # returns traces and labels
 
     def __load_database_m4sc(self, my_database):
-
+        
         # load traces
         print("++ Loading schoolbook on m4sc data")
-
+        
         data = []
         data_file = my_database
         with open(data_file, 'rb') as f:
@@ -243,8 +242,10 @@ class DATA_LOADER:
         # parse traces - convert int array to bit array
         print("++ Parse m4sc data")
         X = np.array([i[4] for i in data])
-        y_init = np.array([int((int(i[0][-2:], 16))) for i in data])
-        y = np.array([self.__chunk4(i) for i in y_init], dtype=np.uint8)
+        y_init = np.array([int((int(i[0][:2], 16))) for i in data])
+        y = np.array([self.__bit8(i) for i in y_init], dtype=np.uint8)
+#         y = np.array([int((int(i[0][:2], 16))) for i in data])
+
         print("++ Finished parsing m4sc data")
 
         print("++ Normalizing traces of m4sc")
@@ -255,7 +256,7 @@ class DATA_LOADER:
         # Organize trace data for network
         print("++ Organizing traces")
     #     KEY_LENGTH = TEXT_LENGTH = 1
-        self.KEY_LENGTH = 4
+        self.KEY_LENGTH = 1
 #         print("KEY_LENGTH: {}".format(self.KEY_LENGTH))
 
         # SET DATA RELATED GLOBALS REQUIRED FOR EXTRACTION
@@ -276,18 +277,23 @@ class DATA_LOADER:
         if DB_TYPE in [TYPE_ASCAD]:
             self.X, self.Y = self.__load_ascad(my_database)
             self.num_classes = 256
+            self.TO_CAT = True
         elif DB_TYPE in [TYPE_NTRU]:
             self.X, self.Y = self.__load_database_cw(my_database)
             self.num_classes = 3
+            self.TO_CAT = True
         elif DB_TYPE in [TYPE_GAUSS]:
             self.num_classes = 2
             self.X, self.Y = self.__load_database_gauss(my_database)
+            self.TO_CAT = True
         elif DB_TYPE in [TYPE_DPA]:
             self.num_classes = 2
             self.X, self.Y = self.__load_database_dpa_contest(my_database)
+            self.TO_CAT = True
         elif DB_TYPE in [TYPE_M4SC]:
-            self.num_classes = 4
+            self.num_classes = 8
             self.X, self.Y = self.__load_database_m4sc(my_database)
+            self.TO_CAT = False
         else:
             print("This shouldn't happen. DB_TYPE entered is not supported.")
             sys.exit(-1)
@@ -302,8 +308,14 @@ class DATA_LOADER:
             best_model = cnn3(self.num_classes, self.SAMPLE_HIGH)
         elif(network_type=="cnn4"):
             best_model = cnn4(self.num_classes, self.SAMPLE_HIGH)
+        elif(network_type=="cnn5"):
+            best_model = cnn5(self.num_classes, self.SAMPLE_HIGH)
         elif(network_type=="mlp"):
             best_model = mlp(self.num_classes, self.SAMPLE_HIGH)
+        elif(network_type=="mlp2"):
+            best_model = mlp2(self.num_classes, self.SAMPLE_HIGH)
+        elif(network_type=="mlp3"):
+            best_model = mlp3(self.num_classes, self.SAMPLE_HIGH)
         else: #display an error and abort
             print("Error: no topology found for network '%s' ..." % network_type)
             sys.exit(-1);
@@ -315,25 +327,28 @@ class DATA_LOADER:
         self.X_testing = self.X[self.TEST_SLICE]
         ## make sure input data has correct shape (this part was adapted from ASCAD code as we need to do the exact same thing here)
         input_layer_shape = best_model.get_layer(index=0).input_shape
+#         # Adapt the data shape according our model input
+#         if len(input_layer_shape) == 2:
+#             # This is a MLP
+#             self.X_testing = self.X[self.TEST_SLICE, :]
+#         elif len(input_layer_shape) == 3:
+#             # This is a CNN: reshape the data
+#             self.X_testing = self.X[self.TEST_SLICE, :]
+#             self.X_testing = self.X_testing.reshape((self.X_testing.shape[0], self.X_testing.shape[1], 1))
+#         else:
+#             print("Error: model input shape length %d is not expected ..." % len(input_layer_shape))
+#             sys.exit(-1)
+
         # Adapt the data shape according our model input
-        if len(input_layer_shape) == 2:
-            # This is a MLP
-            self.X_testing = self.X[self.TEST_SLICE, :]
-        elif len(input_layer_shape) == 3:
-            # This is a CNN: reshape the data
-            self.X_testing = self.X[self.TEST_SLICE, :]
-            self.X_testing = self.X_testing.reshape((self.X_testing.shape[0], self.X_testing.shape[1], 1))
-        else:
-            print("Error: model input shape length %d is not expected ..." % len(input_layer_shape))
-            sys.exit(-1)
-        
+        self.X_testing = self.X[self.TEST_SLICE, :]
+
         # ASCAD has only one key so it's labels are referenced differently
-        if self.DB_TYPE in [TYPE_NTRU, TYPE_GAUSS, TYPE_DPA, TYPE_M4SC]:
+        if self.DB_TYPE in [TYPE_NTRU, TYPE_GAUSS, TYPE_DPA]:
             # Load profiling labels
             self.Y_profiling = self.Y[self.TRAINING_SLICE, key_idx]
             # Load testing labels
             self.Y_testing = self.Y[self.TEST_SLICE, key_idx]
-        elif self.DB_TYPE in [TYPE_ASCAD]:
+        elif self.DB_TYPE in [TYPE_ASCAD, TYPE_M4SC]:
             # Load profiling labels
             self.Y_profiling = self.Y[self.TRAINING_SLICE]
             # Load testing labels

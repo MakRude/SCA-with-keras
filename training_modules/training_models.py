@@ -16,6 +16,8 @@ from keras.layers import BatchNormalization, GaussianNoise, MaxPooling1D, Dropou
 from keras.optimizers import RMSprop
 from keras.models import Sequential
 
+# load hyper_parameters:
+from hyper_parameters import drop_out, LEARNING_RATE
 
 
 ### MLP model
@@ -30,14 +32,33 @@ def mlp(classes=3, SAMPLE_HIGH=0):
     for i in range(layer_nb-2):
         model.add(Dense(node, activation='relu'))
     model.add(Dense(classes, activation='softmax'))
-    optimizer = RMSprop(lr=0.01)
+    optimizer = RMSprop(lr=LEARNING_RATE)
     model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
     return model
+
+
+### MLP model
+def mlp2(classes=3, SAMPLE_HIGH=0):
+
+    layer_nb = 4
+    node = 5
+    input_shape = SAMPLE_HIGH
+    model = Sequential()
+    # model.add(Dense(node, input_dim=1400, activation='relu'))
+    model.add(Dense(node, input_dim=input_shape, activation='relu'))
+    for i in range(layer_nb-2):
+        model.add(Dense(node, activation='relu'))
+    model.add(Dense(classes, activation='softmax'))
+    optimizer = Adam(lr=LEARNING_RATE)
+    model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+    return model
+
 
 
 ### CNN model - Took ASCAD base
 def cnn(classes=3, SAMPLE_HIGH=0):
     # From VGG16 design
+#     input_shape = SAMPLE_HIGH
     input_shape = (SAMPLE_HIGH,1)
     img_input = Input(shape=input_shape)
     # Block 1
@@ -62,7 +83,7 @@ def cnn(classes=3, SAMPLE_HIGH=0):
     return model
 
 
-### CNN model 2 - ASCAD best cnn w/ adam
+### CNN model 2 - ASCAD best cnn w/ RMSprop
 def cnn2(classes=3, SAMPLE_HIGH=0):
 # From VGG16 design
     input_shape = (SAMPLE_HIGH,1)
@@ -167,7 +188,7 @@ def cnn4(classes=3, SAMPLE_HIGH=0):
     x = Flatten(name='flatten')(x)
     x = Dense(128, activation='relu', name='fc1')(x)
 
-    x = Dropout(0.3)(x)
+    x = Dropout(drop_out)(x)
     x = Dense(classes, activation='softmax', name='predictions')(x)
 
     inputs = img_input
@@ -176,3 +197,65 @@ def cnn4(classes=3, SAMPLE_HIGH=0):
     optimizer = Adam(lr=LEARNING_RATE) # this one had 0.001
     model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
     return model
+
+
+
+
+### CNN model 5 - VGG16 based from: https://towardsdatascience.com/the-4-convolutional-neural-network-models-that-can-classify-your-fashion-images-9fe7f3e5399d
+## It now has binary cross_entropy
+def cnn5(classes=3, SAMPLE_HIGH=0):
+    # From VGG16 design
+    input_shape = (SAMPLE_HIGH,1)
+    img_input = Input(shape=input_shape)
+    # Block 0
+    x = BatchNormalization()(img_input)
+    
+    # Block 1
+    x = Conv1D(32, 3, activation='relu', padding='valid', name='block1_conv1')(x)
+    x = MaxPooling1D(2, name='block1_pool')(x)
+    x = Dropout(0.25)(x)
+    
+    # Block 2
+    x = Conv1D(64, 3, activation='relu', padding='valid', name='block2_conv1')(x)
+    x = MaxPooling1D(2, name='block2_pool')(x)
+    x = Dropout(0.25)(x)
+
+    # Block 3
+    x = Conv1D(128, 3, activation='relu', padding='valid', name='block3_conv1')(x)
+    x = Dropout(0.4)(x)
+    
+    # Classification block
+    x = Flatten(name='flatten')(x)
+    x = Dense(128, activation='relu', name='fc1')(x)
+
+    x = Dropout(drop_out)(x)
+    x = Dense(classes, activation='softmax', name='predictions')(x)
+
+    inputs = img_input
+    # Create model.
+    model = Model(inputs, x, name='cnn')
+    optimizer = Adam(lr=LEARNING_RATE) # this one had 0.001
+    model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+    return model
+
+
+
+### MLP model
+## It now has binary cross_entropy
+def mlp3(classes=3, SAMPLE_HIGH=0):
+    layer_nb = 6
+    node = 8
+    input_shape = SAMPLE_HIGH
+    model = Sequential()
+    # model.add(Dense(node, input_dim=1400, activation='relu'))
+    model.add(Dense(node, input_dim=input_shape, activation='relu'))
+    for i in range(layer_nb-2):
+        model.add(Dense(node, activation='relu'))
+    model.add(Dense(classes, activation='softmax'))
+    optimizer = RMSprop(lr=LEARNING_RATE)
+    model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+    return model
+
+
+
+
