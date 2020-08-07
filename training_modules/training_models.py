@@ -117,6 +117,44 @@ def cnn2(classes=3, SAMPLE_HIGH=0):
     return model
 
 
+
+
+### CNN model 2 - ASCAD best cnn w/ RMSprop
+def cnn2_2(classes=3, SAMPLE_HIGH=0):
+# From VGG16 design
+    input_shape = (SAMPLE_HIGH,1)
+    img_input = Input(shape=input_shape)
+    # Block 1
+    x = Conv1D(64, 11, activation='relu', padding='same', name='block1_conv1')(img_input)
+    x = AveragePooling1D(2, strides=2, name='block1_pool')(x)
+    # Block 2
+    x = Conv1D(128, 11, activation='relu', padding='same', name='block2_conv1')(x)
+    x = AveragePooling1D(2, strides=2, name='block2_pool')(x)
+    # Block 3
+    x = Conv1D(256, 11, activation='relu', padding='same', name='block3_conv1')(x)
+    x = AveragePooling1D(2, strides=2, name='block3_pool')(x)
+    # Block 4
+    x = Conv1D(512, 11, activation='relu', padding='same', name='block4_conv1')(x)
+    x = AveragePooling1D(2, strides=2, name='block4_pool')(x)
+    # Block 5
+    x = Conv1D(512, 11, activation='relu', padding='same', name='block5_conv1')(x)
+    x = AveragePooling1D(2, strides=2, name='block5_pool')(x)
+    # Classification block
+    x = Flatten(name='flatten')(x)
+    x = Dense(50, activation='relu', name='fc1')(x)
+    x = Dense(50, activation='relu', name='fc2')(x)
+    x = Dense(classes, activation='relu', name='predictions')(x)
+
+    inputs = img_input
+    # Create model.
+    model = Model(inputs, x, name='cnn')
+    optimizer = RMSprop(lr=LEARNING_RATE) # usually 0.00001 for this one
+    model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+    return model
+
+
+
+
 ### CNN model 2 - Simplified ASCAD
 def cnn3(classes=3, SAMPLE_HIGH=0):
     # From VGG16 design

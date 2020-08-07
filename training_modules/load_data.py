@@ -10,12 +10,13 @@ import chipwhisperer as cw
 import h5py
 ## load m4sc data
 import pickle
+import m4sc # needed in case cw sends faulty data (it's only needed so we can unpickle the data.)
 # consts
 from hyper_parameters import TST_LEN
 from training_modules.misc import TYPE_ASCAD, TYPE_NTRU, TYPE_GAUSS, TYPE_DPA, TYPE_M4SC
 from training_modules.misc import check_file_exists
 # training models
-from training_modules.training_models import mlp, mlp2, mlp3, cnn, cnn2, cnn3, cnn4, cnn5
+from training_modules.training_models import mlp, mlp2, mlp3, cnn, cnn2, cnn3, cnn4, cnn5, cnn2_2
 
 
 class DATA_LOADER:     
@@ -213,6 +214,9 @@ class DATA_LOADER:
         temp = self.__bit8(i)
         return [self.__concatBits(temp[2*i], temp[2*i + 1]) for i in range(4)]
 
+    def __to_16bits(self, num):
+        return np.array([0 if (num & (2**i) is 0) else 1 for i in range(16)])
+
 #     def bit16(i):
 #     #     return [(0 if (0 == (i & (1 << j))) else 1) for j in range(15, -1, -1)]
 #         return [(0 if (0 == (i & (1 << j))) else 1) for j in range(16)]
@@ -242,12 +246,26 @@ class DATA_LOADER:
         # parse traces - convert int array to bit array
         print("++ Parse m4sc data")
         X = np.array([i[4] for i in data])
-        y_init = np.array([int((int(i[0][:2], 16))) for i in data])
-        y = np.array([self.__bit8(i) for i in y_init], dtype=np.uint8)
+#         y_init = np.array([int((int(i[0][:2], 16))) for i in data])
+#         y = np.array([self.__bit8(i) for i in y_init], dtype=np.uint8)
+        
+        y_init = np.array([i[1] for i in data])
+        
+        y_tmp = [[i for i in j] for j in y_init] # list of strings to list of lists
+        y_tmp = [np.reshape(i,(24, 2)) for i in y_tmp] # list of lists to list of matrices (row per coeff in each matrix)
+        y_tmp = [[''.join(i) for i in j] for j in y_tmp] # list of coeff. list
+
+        coeff2num_dict = {
+            '11':-1,
+            '00':0,
+            '01':1,
+            'ee':2
+        }
+#         print("y_tmp: ", y_tmp)
+        y = np.array([[coeff2num_dict.get(i) for i in j] for j in y_tmp], dtype=int)
+#         y = np.array([self.__to_16bits(i) for i in y_init], dtype=np.uint8)
 #         y = np.array([int((int(i[0][:2], 16))) for i in data])
-
         print("++ Finished parsing m4sc data")
-
         print("++ Normalizing traces of m4sc")
         X = X - X.mean()
         X = X / X.max()
@@ -256,13 +274,13 @@ class DATA_LOADER:
         # Organize trace data for network
         print("++ Organizing traces")
     #     KEY_LENGTH = TEXT_LENGTH = 1
-        self.KEY_LENGTH = 1
+        self.KEY_LENGTH = 24
 #         print("KEY_LENGTH: {}".format(self.KEY_LENGTH))
 
         # SET DATA RELATED GLOBALS REQUIRED FOR EXTRACTION
         sample_len = X.shape[1] # length of singular trace
         trace_num = X.shape[0] # number of traces
-
+        print("Traces shape: {}".format(X.shape))
         self.__set_dims(sample_len, trace_num)
         
                           
@@ -291,9 +309,9 @@ class DATA_LOADER:
             self.X, self.Y = self.__load_database_dpa_contest(my_database)
             self.TO_CAT = True
         elif DB_TYPE in [TYPE_M4SC]:
-            self.num_classes = 8
+            self.num_classes = 4
             self.X, self.Y = self.__load_database_m4sc(my_database)
-            self.TO_CAT = False
+            self.TO_CAT = True
         else:
             print("This shouldn't happen. DB_TYPE entered is not supported.")
             sys.exit(-1)
@@ -304,6 +322,8 @@ class DATA_LOADER:
             best_model = cnn(self.num_classes, self.SAMPLE_HIGH)
         elif(network_type=="cnn2"):
             best_model = cnn2(self.num_classes, self.SAMPLE_HIGH)
+        elif(network_type=="cnn2_2"):
+            best_model = cnn2_2(self.num_classes, self.SAMPLE_HIGH)
         elif(network_type=="cnn3"):
             best_model = cnn3(self.num_classes, self.SAMPLE_HIGH)
         elif(network_type=="cnn4"):
@@ -343,12 +363,12 @@ class DATA_LOADER:
         self.X_testing = self.X[self.TEST_SLICE, :]
 
         # ASCAD has only one key so it's labels are referenced differently
-        if self.DB_TYPE in [TYPE_NTRU, TYPE_GAUSS, TYPE_DPA]:
+        if self.DB_TYPE in [TYPE_NTRU, TYPE_GAUSS, TYPE_DPA, TYPE_M4SC]:
             # Load profiling labels
             self.Y_profiling = self.Y[self.TRAINING_SLICE, key_idx]
             # Load testing labels
             self.Y_testing = self.Y[self.TEST_SLICE, key_idx]
-        elif self.DB_TYPE in [TYPE_ASCAD, TYPE_M4SC]:
+        elif self.DB_TYPE in [TYPE_ASCAD]:
             # Load profiling labels
             self.Y_profiling = self.Y[self.TRAINING_SLICE]
             # Load testing labels
