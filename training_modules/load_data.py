@@ -10,7 +10,7 @@ import chipwhisperer as cw
 import h5py
 ## load m4sc data
 import pickle
-import m4sc.m4sc # needed in case cw sends faulty data (it's only needed so we can unpickle the data.)
+
 # consts
 from hyper_parameters import TST_LEN
 from training_modules.misc import TYPE_ASCAD, TYPE_NTRU, TYPE_GAUSS, TYPE_DPA, TYPE_M4SC
@@ -230,7 +230,11 @@ class DATA_LOADER:
     # returns traces and labels
 
     def __load_database_m4sc(self, my_database):
-        
+        # TODO: GET THIS DISGUSTING 2-LINER OUT OF HERE AND PROPERLY HANDLE THE UNPICKLING
+        # TODO: DELETE M4SC REP FROM MY REP
+        sys.path.append("./m4sc/")
+        import m4sc # needed in case cw sends faulty data (it's only needed so we can unpickle the data.)
+
         # load traces
         print("++ Loading schoolbook on m4sc data")
         
