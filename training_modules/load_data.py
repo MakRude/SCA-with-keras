@@ -10,7 +10,7 @@ import chipwhisperer as cw
 import h5py
 ## load m4sc data
 import pickle
-import m4sc # needed in case cw sends faulty data (it's only needed so we can unpickle the data.)
+import m4sc.m4sc # needed in case cw sends faulty data (it's only needed so we can unpickle the data.)
 # consts
 from hyper_parameters import TST_LEN
 from training_modules.misc import TYPE_ASCAD, TYPE_NTRU, TYPE_GAUSS, TYPE_DPA, TYPE_M4SC
