@@ -18,6 +18,9 @@ from training_modules.misc import check_file_exists
 # training models
 from training_modules.training_models import mlp, mlp2, mlp3, cnn, cnn2, cnn3, cnn4, cnn5, cnn2_2
 
+# in case of you're not dealing with multi-label classification:
+from keras.utils import to_categorical
+
 
 class DATA_LOADER:     
     # code snippet taken from ASCAD_train_model. Altered by Mahmoud Gharra (concatinated profiling and attack data to fit our code)
@@ -293,29 +296,34 @@ class DATA_LOADER:
     
     
     
-    def __init__(self, DB_TYPE, my_database, meta=""):
+    def __init__(self, DB_TYPE, my_database, meta=""): # TODO: this method involves a ton of repetition. Find a way of making it more intuitive.
         self.DB_TYPE = DB_TYPE
         print("+ Commense loading data")
         if DB_TYPE in [TYPE_ASCAD]:
             self.X, self.Y = self.__load_ascad(my_database)
             self.num_classes = 256
-            self.TO_CAT = True
+            # to cat: (when not doing multi-label training)
+            self.Y = to_categorical(self.Y, num_classes=self.num_classes)
         elif DB_TYPE in [TYPE_NTRU]:
             self.X, self.Y = self.__load_database_cw(my_database)
             self.num_classes = 3
-            self.TO_CAT = True
+            # to cat: (when not doing multi-label training)
+            self.Y = to_categorical(self.Y, num_classes=self.num_classes)
         elif DB_TYPE in [TYPE_GAUSS]:
             self.num_classes = 2
             self.X, self.Y = self.__load_database_gauss(my_database)
-            self.TO_CAT = True
+            # to cat: (when not doing multi-label training)
+            self.Y = to_categorical(self.Y, num_classes=self.num_classes)
         elif DB_TYPE in [TYPE_DPA]:
             self.num_classes = 2
             self.X, self.Y = self.__load_database_dpa_contest(my_database)
-            self.TO_CAT = True
+            # to cat: (when not doing multi-label training)
+            self.Y = to_categorical(self.Y, num_classes=self.num_classes)
         elif DB_TYPE in [TYPE_M4SC]:
             self.num_classes = 4
             self.X, self.Y = self.__load_database_m4sc(my_database)
-            self.TO_CAT = True
+            # to cat: (when not doing multi-label training)
+            self.Y = to_categorical(self.Y, num_classes=self.num_classes)
         else:
             print("This shouldn't happen. DB_TYPE entered is not supported.")
             sys.exit(-1)

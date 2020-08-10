@@ -6,7 +6,7 @@ from keras.models import Model
 from keras.optimizers import Adam
 ### training method modules
 from keras.callbacks import ModelCheckpoint, EarlyStopping
-from keras.utils import to_categorical
+# from keras.utils import to_categorical
 from keras.models import load_model
 ## CNN2
 ### Model modules

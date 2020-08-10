@@ -41,15 +41,19 @@ def calc_tst_acc(data_loader, seed=None, key_idx=None):
 #     else:
 #         print("Error: model input shape length %d is not expected ..." % len(input_layer_shape))
 #         sys.exit(-1)
-    
+#     import tensorflow as tf
     Reshaped_X_attack = X_attack
-    
+#     with tf.device('/gpu:1'):
     predictions = np.argmax(best_model.predict(Reshaped_X_attack), 1)
-#     print("predictions: ", predictions)
-#     print("Y_profiling: ", Y_attack)
-#     print("predictions cmp Y_profiling: ", (Y_attack == predictions))
     
-    accuracy = sum(Y_attack == predictions)/TEST_NUM 
+
+#     print("predictions: ", predictions)
+#     print("Y_profiling mtrx: ", Y_attack)
+#     print("Y_profiling indx: ", np.argmax(Y_attack,1))
+    
+#     print("predictions cmp Y_profiling: ", (np.argmax(Y_attack,1) == predictions))
+
+    accuracy = sum(np.argmax(Y_attack,1) == predictions)/TEST_NUM 
     return accuracy
 
 def calc_advantage(tst_acc):
