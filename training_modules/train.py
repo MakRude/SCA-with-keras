@@ -2,7 +2,8 @@
 import os
 
 # hyper parameters
-from hyper_parameters import epochs, batch_size, MIN_ACC, drop_out, MAX_ATTEMPTS_PER_KEY, LEARNING_RATE, validation_split_const
+from hyper_parameters import MIN_ACC, drop_out, MAX_ATTEMPTS_PER_KEY, validation_split_const
+
 
 
 from training_modules.load_data import DATA_LOADER
@@ -38,7 +39,7 @@ from keras.models import Sequential
 
 
 ## Training high level function 
-def train_model(data_loader, save_loc, seed=0, key_idx=None):
+def train_model(data_loader, save_loc, epochs=200, batch_size=100, seed=0, key_idx=None):
 
     for attempt in range(MAX_ATTEMPTS_PER_KEY):
         model_dir = get_file_loc(save_loc, MODEL_CONST)

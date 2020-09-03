@@ -17,11 +17,11 @@ from keras.optimizers import RMSprop
 from keras.models import Sequential
 
 # load hyper_parameters:
-from hyper_parameters import drop_out, LEARNING_RATE
+from hyper_parameters import drop_out
 
 
 ### MLP model
-def mlp(classes=3, SAMPLE_HIGH=0):
+def mlp(classes=3, SAMPLE_HIGH=0, LEARNING_RATE=0.01):
 
     layer_nb = 4
     node = 5
@@ -38,7 +38,7 @@ def mlp(classes=3, SAMPLE_HIGH=0):
 
 
 ### MLP model
-def mlp2(classes=3, SAMPLE_HIGH=0):
+def mlp2(classes=3, SAMPLE_HIGH=0, LEARNING_RATE=0.01):
 
     layer_nb = 4
     node = 5
@@ -56,7 +56,7 @@ def mlp2(classes=3, SAMPLE_HIGH=0):
 
 
 ### CNN model - Took ASCAD base
-def cnn(classes=3, SAMPLE_HIGH=0):
+def cnn(classes=3, SAMPLE_HIGH=0, LEARNING_RATE=0.0001):
     # From VGG16 design
 #     input_shape = SAMPLE_HIGH
     input_shape = (SAMPLE_HIGH,1)
@@ -84,7 +84,7 @@ def cnn(classes=3, SAMPLE_HIGH=0):
 
 
 ### CNN model 2 - ASCAD best cnn w/ RMSprop
-def cnn2(classes=3, SAMPLE_HIGH=0):
+def cnn2(classes=3, SAMPLE_HIGH=0, LEARNING_RATE=0.0001):
 # From VGG16 design
     input_shape = (SAMPLE_HIGH,1)
     img_input = Input(shape=input_shape)
@@ -120,7 +120,7 @@ def cnn2(classes=3, SAMPLE_HIGH=0):
 
 
 ### CNN model 2 - ASCAD best cnn w/ RMSprop
-def cnn2_2(classes=3, SAMPLE_HIGH=0):
+def cnn2_2(classes=3, SAMPLE_HIGH=0, LEARNING_RATE=0.0001):
 # From VGG16 design
     input_shape = (SAMPLE_HIGH,1)
     img_input = Input(shape=input_shape)
@@ -156,7 +156,7 @@ def cnn2_2(classes=3, SAMPLE_HIGH=0):
 
 
 ### CNN model 2 - Simplified ASCAD
-def cnn3(classes=3, SAMPLE_HIGH=0):
+def cnn3(classes=3, SAMPLE_HIGH=0, LEARNING_RATE=0.0001):
     # From VGG16 design
     input_shape = (SAMPLE_HIGH,1)
     img_input = Input(shape=input_shape)
@@ -201,7 +201,7 @@ def cnn3(classes=3, SAMPLE_HIGH=0):
 
 
 ### CNN model 4 - VGG16 based from: https://towardsdatascience.com/the-4-convolutional-neural-network-models-that-can-classify-your-fashion-images-9fe7f3e5399d
-def cnn4(classes=3, SAMPLE_HIGH=0):
+def cnn4(classes=3, SAMPLE_HIGH=0, LEARNING_RATE=0.0001):
     # From VGG16 design
     input_shape = (SAMPLE_HIGH,1)
     img_input = Input(shape=input_shape)
@@ -241,7 +241,7 @@ def cnn4(classes=3, SAMPLE_HIGH=0):
 
 ### CNN model 5 - VGG16 based from: https://towardsdatascience.com/the-4-convolutional-neural-network-models-that-can-classify-your-fashion-images-9fe7f3e5399d
 ## It now has binary cross_entropy
-def cnn5(classes=3, SAMPLE_HIGH=0):
+def cnn5(classes=3, SAMPLE_HIGH=0, LEARNING_RATE=0.0001):
     # From VGG16 design
     input_shape = (SAMPLE_HIGH,1)
     img_input = Input(shape=input_shape)
@@ -280,7 +280,7 @@ def cnn5(classes=3, SAMPLE_HIGH=0):
 
 ### MLP model
 ## It now has binary cross_entropy
-def mlp3(classes=3, SAMPLE_HIGH=0):
+def mlp3(classes=3, SAMPLE_HIGH=0, LEARNING_RATE=0.0001):
     layer_nb = 6
     node = 8
     input_shape = SAMPLE_HIGH

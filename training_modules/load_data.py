@@ -383,26 +383,26 @@ class DATA_LOADER:
             print("This shouldn't happen. DB_TYPE entered is not supported.")
             sys.exit(-1)
             
-    def extract_data(self, network_type, key_idx=None):
+    def extract_data(self, network_type, lr=0.01, key_idx=None):
         #get network type
         if(network_type=="cnn"):
-            best_model = cnn(self.num_classes, self.SAMPLE_HIGH)
+            best_model = cnn(self.num_classes, self.SAMPLE_HIGH, lr)
         elif(network_type=="cnn2"):
-            best_model = cnn2(self.num_classes, self.SAMPLE_HIGH)
+            best_model = cnn2(self.num_classes, self.SAMPLE_HIGH, lr)
         elif(network_type=="cnn2_2"):
-            best_model = cnn2_2(self.num_classes, self.SAMPLE_HIGH)
+            best_model = cnn2_2(self.num_classes, self.SAMPLE_HIGH, lr)
         elif(network_type=="cnn3"):
-            best_model = cnn3(self.num_classes, self.SAMPLE_HIGH)
+            best_model = cnn3(self.num_classes, self.SAMPLE_HIGH, lr)
         elif(network_type=="cnn4"):
-            best_model = cnn4(self.num_classes, self.SAMPLE_HIGH)
+            best_model = cnn4(self.num_classes, self.SAMPLE_HIGH, lr)
         elif(network_type=="cnn5"):
-            best_model = cnn5(self.num_classes, self.SAMPLE_HIGH)
+            best_model = cnn5(self.num_classes, self.SAMPLE_HIGH, lr)
         elif(network_type=="mlp"):
-            best_model = mlp(self.num_classes, self.SAMPLE_HIGH)
+            best_model = mlp(self.num_classes, self.SAMPLE_HIGH, lr)
         elif(network_type=="mlp2"):
-            best_model = mlp2(self.num_classes, self.SAMPLE_HIGH)
+            best_model = mlp2(self.num_classes, self.SAMPLE_HIGH, lr)
         elif(network_type=="mlp3"):
-            best_model = mlp3(self.num_classes, self.SAMPLE_HIGH)
+            best_model = mlp3(self.num_classes, self.SAMPLE_HIGH, lr)
         else: #display an error and abort
             print("Error: no topology found for network '%s' ..." % network_type)
             sys.exit(-1);
