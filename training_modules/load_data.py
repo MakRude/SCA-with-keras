@@ -130,51 +130,101 @@ class DATA_LOADER:
     def __load_database_gauss(self, my_database):
         # load traces
         print("++ Loading projects")
-        project = cw.open_project(my_database)
+#         project = cw.open_project(my_database)
+        data = []
+        data_file = my_database
+        with open(data_file, 'rb') as f:
+            while True:
+                try:
+                    data.append(pickle.load(f))
+                except EOFError:
+                    break
 
+        print("data: ", data[0])
         # Organize trace data for MLP
         print("++ Organizing traces")
-        self.KEY_LENGTH = len(project.keys[0]) * 8
+#         self.KEY_LENGTH = len(project.keys[0]) * 8
+        self.KEY_LENGTH = 16
 #         print("KEY_LENGTH: {}".format(self.KEY_LENGTH))
-        print("project.keys[0][0]: {}".format(project.keys[0][0]))
-        print("np.asarray(bytearray(project.keys[0]))", np.asarray(bytearray(project.keys[0])))
+#         print("project.keys[0][0]: {}".format(project.keys[0][0]))
+#         print("np.asarray(bytearray(project.keys[0]))", np.asarray(bytearray(project.keys[0])))
 
         # SET DATA RELATED GLOBALS REQUIRED FOR EXTRACTION
-        sample_low = 0
-        self.SAMPLE_HIGH = project.trace_manager().num_points() # length of singular trace
-        sample_slice = slice(sample_low, self.SAMPLE_HIGH)
-        sample_num = len(project.traces) # number of traces
+#         sample_low = 0
+#         self.SAMPLE_HIGH = project.trace_manager().num_points() # length of singular trace
+#         sample_slice = slice(sample_low, self.SAMPLE_HIGH)
+#         sample_num = len(project.traces) # number of traces
+
+
     #     print("sample num: ", sample_num)
 
+    
+    
+    
         # organize traces in X and Y matrices
         
         # count is used to count traces with wrong label length (some labels displayed a length of 31 instead of 32. This is a quick work-around)
-        count = 0
+#         count = 0
 
-        X = empty(shape=(sample_num, self.SAMPLE_HIGH - sample_low))
-        y = empty(shape=(sample_num, KEY_LENGTH))
+#         X = empty(shape=(sample_num, self.SAMPLE_HIGH - sample_low))
+#         y = empty(shape=(sample_num, KEY_LENGTH))
 
-        for i in range(sample_num):
-            if (len(np.asarray(bytearray(project.keys[i])))) is not int(KEY_LENGTH/8):
-                count += 1
-                print("Number of problematic traces raised to: {}".format(count))
-                continue
-            # we subtract count because we're trying to fill in for the wrong traces
-            y[i-count] = np.asarray([int(char) for char in ''.join(['{0:08b}'.format(ff) for ff in np.asarray(bytearray(project.keys[0]))])])
-            X[i-count] = project.waves[i][sample_slice]
+#         for i in range(sample_num):
+#             if (len(np.asarray(bytearray(project.keys[i])))) is not int(KEY_LENGTH/8):
+#                 count += 1
+#                 print("Number of problematic traces raised to: {}".format(count))
+#                 continue
+#             # we subtract count because we're trying to fill in for the wrong traces
+#             y[i-count] = np.asarray([int(char) for char in ''.join(['{0:08b}'.format(ff) for ff in np.asarray(bytearray(project.keys[0]))])])
+#             X[i-count] = project.waves[i][sample_slice]
             
         # remove last {count} rows (They're empty - some of the data was corrupted)
-        if i is not 0:
-            y = y[0:-count]
-            X = X[0:-count]
+#         if i is not 0:
+#             y = y[0:-count]
+#             X = X[0:-count]
+
+
+        X = np.array([i[4] for i in data])
+#         y_init = np.array([int((int(i[0][:2], 16))) for i in data])
+#         y = np.array([self.__bit8(i) for i in y_init], dtype=np.uint8)
+        print("X.shape: ", X.shape)
+        y = np.array([i[2] for i in data])
+        
+        print("first 10 labels <y[:10]>: ", y[:10])
+#         print("first 10 values as int16 <np.int16(y[:10])>: ", np.int16(y[:10]))
+        
+        y = np.array([self.__to_16bits(np.int16(i)) for i in y], dtype=np.uint8) # input is 10 Bit large... We have a multi-label training on our hands.
+        print("first 10 labels as bit <y[:10]>: ", y[:10])
+
+#         y = np.array([int((int(i[0][:2], 10))) for i in data])
+
+#         print("data[0]: ", data[0])
+        print("y.shape: ", y.shape)
+    
+#         print("y[0]: ", y[:10])
+    
+    
+        print("++ Finished parsing Gaussian data")
+        print("++ Normalizing traces of Gauss")
+        X = X - X.mean()
+        X = X / X.max()
 
 
         # SET DATA RELATED GLOBALS before returning (POST EXTRACTION)
-        sample_len = project.trace_manager().num_points() # length of singular trace
-        trace_num = len(project.traces) - count # number of traces
-                          
+#         sample_len = project.trace_manager().num_points() # length of singular trace
+#         trace_num = len(project.traces) - count # number of traces
+        sample_len = X.shape[1] # length of singular trace
+        trace_num = X.shape[0] # number of traces
+        
+        
         self.__set_dims(sample_len, trace_num)
-                          
+        
+#         print("np.unique(y)", np.unique(y))
+#         print("y[0]: ", y[0])
+        
+
+#         print("X: ", X)
+        
         return X, y
 
 
@@ -218,7 +268,12 @@ class DATA_LOADER:
         return [self.__concatBits(temp[2*i], temp[2*i + 1]) for i in range(4)]
 
     def __to_16bits(self, num):
-        return np.array([0 if (num & (2**i) is 0) else 1 for i in range(16)])
+        return np.array([0 if (num & (1 << i) == 0) else 1 for i in range(16)])
+#         return np.array([0 if (num & (1 << i) == 0) else 1 for i in range(15, -1, -1)])
+
+    
+#     def __to_10bits(self, num):
+#         return np.array([0 if (np.uint16(num) & (2**i) is 0) else 1 for i in range(10)])
 
 #     def bit16(i):
 #     #     return [(0 if (0 == (i & (1 << j))) else 1) for j in range(15, -1, -1)]

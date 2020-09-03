@@ -70,10 +70,7 @@ def train_model(data_loader, save_loc, seed=0, key_idx=None):
 #             sys.exit(-1)
 
         Reshaped_X_profiling = data_loader.X_profiling
-#         if not data_loader.TO_CAT:
         _history = training_model_intern(model=data_loader.model, x=Reshaped_X_profiling, y=data_loader.Y_profiling, callbacks=callbacks, batch_size=batch_size, verbose=1, epochs=epochs, validation_split=validation_split_const)
-#         else:
-#             _history = training_model_intern(model=data_loader.model, x=Reshaped_X_profiling, y=to_categorical(data_loader.Y_profiling, num_classes=data_loader.num_classes), callbacks=callbacks, batch_size=batch_size, verbose=1, epochs=epochs, validation_split=validation_split_const)
         
         if _history.history['accuracy'][-1] > MIN_ACC:
             break
