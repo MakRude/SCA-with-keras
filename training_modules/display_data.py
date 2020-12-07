@@ -3,15 +3,15 @@ import numpy as np
 from scipy import signal, fftpack
 import matplotlib.pyplot as plt
 
-from training_modules.misc import TYPE_ASCAD, TYPE_NTRU, TYPE_GAUSS, TYPE_DPA, TYPE_M4SC
+from misc import TYPE_ASCAD, TYPE_NTRU, TYPE_GAUSS, TYPE_DPA, TYPE_M4SC
 
 
-
-
-
-        
 def sample_traces(unlab_traces):
-    
+    """
+    TODO: add description
+    :param unlab_traces:
+    :return:
+    """
     t = np.arange(unlab_traces.shape[1])
     myTraces = np.array(unlab_traces)
 
@@ -50,8 +50,6 @@ def sample_traces(unlab_traces):
     #     axs3[k].set_xlim(-10, 10)
     #     axs3[k].set_ylim(-1, 10)
 
-    
-    
     # https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.spectrogram.html
     print("++ plot spectrogram")
     fig4, axs4 = plt.subplots(tot)
